@@ -1,9 +1,9 @@
 <?php 
 
 $db_server = 'localhost';
-$db_username = 'bytescloud_usr';
-$db_password = 'E5S2Kbha9e';
-$db_databasename = 'bytescloud_usr';
+$db_username = 'root';
+$db_password = '';
+$db_databasename = 'foo_db';
 
 
 $db_table = '';
