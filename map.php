@@ -1,4 +1,4 @@
-<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDgzNrN0i8WNwm3bOiWFeXt_bQFy4Vr5Vs&libraries=geometry"></script>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
 <!-- https://maps.googleapis.com/maps/api/js -->
 <!-- AIzaSyDgzNrN0i8WNwm3bOiWFeXt_bQFy4Vr5Vs -->
 <!-- &callback=initMap -->
