@@ -1,4 +1,5 @@
-<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
 <!-- https://maps.googleapis.com/maps/api/js -->
 <!-- AIzaSyDgzNrN0i8WNwm3bOiWFeXt_bQFy4Vr5Vs -->
 <!-- &callback=initMap -->
@@ -283,6 +284,7 @@
     geo.poly = null;
     geo.markers = [];
     geo.geocoder = null;
+    geo.bounds = null;
 
     
 
@@ -302,6 +304,9 @@
            geo.map = new google.maps.Map(document.getElementById(config.mapId), mapOptions);
            geo.poly = new google.maps.Polyline({ map: geo.map, strokeColor: '#443b31' }); //#FF8200
            geo.geocoder = new google.maps.Geocoder();
+           
+           geo.bounds = new google.maps.LatLngBounds();
+
     });
 
     //Alias InitMap (ClearMap) 
@@ -345,8 +350,8 @@
 
                (function (marker, data) {
                    google.maps.event.addListener(marker, "click", function (e) {
-                       infoWindow.setContent(data.description);
-                       infoWindow.open(geo.map, marker);
+                       geo.infoWindow.setContent(data.description);
+                       geo.infoWindow.open(geo.map, marker);
                    });
                })(marker, data);
            }
@@ -363,6 +368,7 @@
                var data = config.markers[i]
                var myLatlng = new google.maps.LatLng(data.lat, data.lng);
                lat_lng.push(myLatlng);
+
            }
 
            for (var i = 0; i < lat_lng.length; i++) {
@@ -390,6 +396,13 @@
 
     EventBus.Subscribe('ZoomMap',function(config){
       geo.map.setZoom(config.zoom);
+    });
+
+    EventBus.Subscribe('ZoomArroundMarkers',function(config){
+      for (var i = 0; i < geo.markers.length; i++) {
+       geo.bounds.extend(geo.markers[i].getPosition());
+      }
+      geo.map.fitBounds(geo.bounds);      
     });
 
     EventBus.Subscribe('MapComputeDistance',function(config){
@@ -439,6 +452,7 @@
     EventBus.Subscribe('MapGetLatLngFromPlaceId',function(config){
 
        config.tag = config.tag || 'tag';
+       config.data = config.data || {};
 
         geo.geocoder.geocode({'placeId': config.placeId}, function(results, status) {
 
@@ -451,7 +465,8 @@
             var result = {
               lat:results[0].geometry.location.lat(),
               lng:results[0].geometry.location.lng(),
-              tag:config.tag
+              tag:config.tag,
+              data:config.data
             } 
 
             console.log(result);
@@ -461,6 +476,208 @@
         });           
 
     });
+
+    EventBus.Subscribe('MapSearchPlaces',function(config){ //searchText,tag => raise event MapPlaceQueried
+      config.tag = config.tag || 'tag';
+
+      EventBus.Notify('AjaxStart',{});
+      EventBus.Notify('MapClearDistance');
+
+       jQuery.ajax({
+        url:'http://r2soft.com.ng/map_get_place.php?searchText=' + config.searchText,
+        type:'get',
+        success:function(response){
+         var json = JSON.parse(response);
+         console.log(json);
+         EventBus.Notify('AjaxStop',{});
+
+         EventBus.Notify('MapPlaceQueried',{data:json,tag:config.tag});
+        }
+       });
+
+
+    });
+
+    EventBus.Subscribe('MapPlaceQueried',function(config){
+      
+      var list = [];
+      var $obj = jQuery('#predictions-list');
+      $obj.show();
+
+      config.data.predictions.forEach(function(v,k){
+        
+        list.push('<div class="predictions-list-item" style="cursor:pointer;padding: 2px;border-bottom: 1px solid #ddd;padding-bottom: 4px;margin-bottom: 4px;" data-place-id="' + v.place_id + '">' + v.description + '</div>');
+
+      });
+
+      $obj.html(list.join(''));
+
+      EventBus.Notify('MapBindToQueriedPlaces',{el:$obj,tag:config.tag});
+
+
+    });
+
+    EventBus.Subscribe('MapClearPlaces',function(config){
+      var $obj = jQuery('#predictions-list');
+      $obj.html('');
+      $obj.hide();
+    });
+
+
+    EventBus.Subscribe('MapBindToQueriedPlaces',function(config){
+       config.el.find('[data-place-id]').each(function(){
+        
+         var place_id = $(this).data('place-id');
+         var label = $(this).html();
+
+         if (config.tag == 'pickup'){
+
+          $(this).on('click',function(){
+             EventBus.Notify('MapPushToPickup',{placeId:place_id,label:label});   
+             EventBus.Notify('MapClearPlaces',{});         
+          });           
+
+         }else if (config.tag == 'dropoff'){
+
+          $(this).on('click',function(){
+            EventBus.Notify('MapPushToDropOff',{placeId:place_id,label:label});            
+            EventBus.Notify('MapClearPlaces',{});         
+          });
+
+         }
+
+       });
+    });
+
+
+    EventBus.Subscribe('MapPushToPickup',function(config){
+      var $el = jQuery('#pickup');
+      $el.val(config.label);
+      EventBus.Notify('MapGetLatLngFromPlaceId',{
+        tag:'pickup',
+        placeId:config.placeId,
+        data:config
+      });
+    });
+
+    EventBus.Subscribe('MapPushToDropOff',function(config){
+      var $el = jQuery('#dropoff');
+      $el.val(config.label);
+      EventBus.Notify('MapGetLatLngFromPlaceId',{
+        tag:'dropoff',
+        placeId:config.placeId,
+        data:config
+      });      
+    });
+
+
+    EventBus.Subscribe('MapInitInputs',function(config){
+ 
+         //dropoff
+         jQuery(config.dropoff).on('keyup',function(){
+          var vl = $(this).val();
+          EventBus.Notify('MapSearchPlaces',{searchText:vl,tag:'dropoff'});
+         });
+
+
+         //pickup
+         jQuery(config.pickup).on('keyup',function(){
+          var vl = $(this).val();
+          EventBus.Notify('MapSearchPlaces',{searchText:vl,tag:'pickup'});
+         });
+
+
+    });
+
+
+    EventBus.Subscribe('AjaxStart',function(){
+      jQuery('#ajax-status').show();
+    });
+
+    EventBus.Subscribe('AjaxStop',function(){
+      jQuery('#ajax-status').hide();
+    });
+
+
+  EventBus.Subscribe('MapGetDistance',function(distanceKM){
+    var $el = jQuery('#measured_distance');
+    $el.show();//
+    $el.html('Total Distance Coverred (KM) : ' + distanceKM);
+  });
+
+    EventBus.Subscribe('MapClearDistance',function(){
+       var $el = jQuery('#measured_distance');
+       $el.html('');  
+       $el.hide();
+    });
+
+
+
+    (function($markers){
+
+      EventBus.Subscribe('MapGottenLatLng',function(config){ //
+        $markers[config.tag] = {
+          lat:config.lat,
+          lng:config.lng,
+          description:config.data.label
+        };
+
+        console.log($markers , 'Markers collator.');
+
+        if ($markers.pickup && $markers.dropoff){
+          
+          EventBus.Notify('InitMap',{
+            mapId:"dvMap"
+          });
+
+          var markers_ = [{
+              lat:$markers.pickup.lat,
+              lng:$markers.pickup.lng,
+              description:$markers.pickup.description
+            },{
+              lat:$markers.dropoff.lat,
+              lng:$markers.dropoff.lng,
+              description:$markers.dropoff.description
+            }];   
+
+        // EventBus.Notify('ZoomMap',{
+        //   zoom:15
+        // });          
+
+
+          EventBus.Notify('AddMarkers',{
+            markers:markers_
+          });
+
+          EventBus.Notify('DrawPath',{
+            markers:markers_
+          });
+
+
+        EventBus.Notify('ZoomArroundMarkers',{});    
+
+
+        EventBus.Notify('MapComputeDistance',{
+          locationA:{
+            lat:$markers.dropoff.lat,
+            lng:$markers.dropoff.lng
+          },
+          locationB:{
+            lat:$markers.pickup.lat,
+            lng:$markers.pickup.lng
+          }
+        });
+
+        //measured_distance       
+
+
+
+        }
+
+      });
+
+    })({});
+
 
 
 
@@ -509,7 +726,67 @@
         });
 
 
+        EventBus.Notify('MapInitInputs',{
+          pickup:'#pickup',
+          dropoff:'#dropoff'
+        });
+
+
        }
    </script>
    <div id="dvMap" style="width: 100%; height: 500px;">
    </div>
+
+
+
+<style type="text/css">
+  .predictions-list-item:hover{
+    background-color: #329832;
+    color: #fff;
+  }  
+</style>
+
+
+<div style="position: relative;top: -74%;margin-left: 11px;background-color: rgba(0,0,0,0.2);padding: 11px;width: 30%;">
+
+  <input type="text" id="pickup" name="search" placeholder="PICKUP LOCATION" style="display: inline-block;padding: 9px;border: 1px solid #777;width: 100%;">
+
+
+  <input type="text" id="dropoff" name="search" placeholder="DROPOFF LOCATION" style="display: inline-block;padding: 9px;border: 1px solid #777;width: 89%;margin-top: 11px;">
+
+   <span style="
+    background-color: #000;
+    padding: 10px;
+    display: inline-block;
+    position: relative;
+    top: 4px;
+">
+<svg viewBox="0 0 64 64" width="16px" height="16px" class=" _style_26XEsq" data-reactid="401" style="
+    color: #fff;
+    fill: currentColor;
+"><path fill-rule="evenodd" clip-rule="evenodd" d="M59.9270592,31.9847012L60,32.061058L43.7665291,49.1333275l-3.2469215-3.5932007 L51.3236885,34H4v-4h47.3943481L40.5196075,18.4069672l3.2469215-3.4938126L60,31.946312L59.9270592,31.9847012z" data-reactid="402"></path></svg>     
+   </span>
+
+   <div id="ajax-status" style="display: none;">
+     <img src="https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif" style="height: 21px;" />
+   </div>
+   
+   <div id="predictions-list" style="
+    padding: 5px;
+    background-color: #fff;
+    margin-top: 6px;
+    border: 1px solid #777;
+    display: none;
+"></div>
+
+   <div id="measured_distance" style="
+    background-color: #000;
+    color: #fff;
+    margin-top: 3px;
+    padding: 3px;
+    display: none;
+">
+   </div>
+
+
+</div>
