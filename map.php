@@ -1,5 +1,5 @@
 <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
 <!-- https://maps.googleapis.com/maps/api/js -->
 <!-- AIzaSyDgzNrN0i8WNwm3bOiWFeXt_bQFy4Vr5Vs -->
 <!-- &callback=initMap -->
@@ -331,6 +331,17 @@
                };
             }
 
+            function pinTaxiSymbol(color){
+                return {
+                    path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z M -2,-30 a 2,2 0 1,1 4,0 2,2 0 1,1 -4,0',
+                    fillColor: color,
+                    fillOpacity: 1,
+                    strokeColor: '#00FF00',
+                    strokeWeight: 2,
+                    scale: 1,
+               };
+            }
+
 // var marker = new GMarker(map.getCenter(), {icon: newIcon});
 
            for (i = 0; i < config.markers.length; i++) {
@@ -603,6 +614,14 @@
     var $el = jQuery('#measured_distance');
     $el.show();//
     $el.html('Total Distance Coverred (KM) : ' + distanceKM);
+
+          EventBus.Notify('StorageSave',{
+            key:'LocationMeasuredDistance',
+            data:{
+              distance:distanceKM
+            }
+          })
+
   });
 
     EventBus.Subscribe('MapClearDistance',function(){
@@ -611,6 +630,15 @@
        $el.hide();
     });
 
+    EventBus.Subscribe('StorageSave',function(config){
+       localStorage.setItem(config.key,JSON.stringify(config.data));
+    });
+
+    EventBus.Subscribe('StorageGet',function(config){
+       var obj = localStorage.getItem(config.key); //,JSON.stringify(config.data));
+       obj = JSON.parse(obj);
+       EventBus.Notify('OnStorageGet' + config.key,{data:obj});
+    });
 
 
     (function($markers){
@@ -625,6 +653,11 @@
         console.log($markers , 'Markers collator.');
 
         if ($markers.pickup && $markers.dropoff){
+
+          EventBus.Notify('StorageSave',{
+            key:'LocationSettings',
+            data:$markers
+          })
           
           EventBus.Notify('InitMap',{
             mapId:"dvMap"
@@ -677,6 +710,11 @@
       });
 
     })({});
+
+
+    EventBus.Subscribe('OnStorageGetLocationSettings',function(config){
+      console.log(config);
+    });
 
 
 
