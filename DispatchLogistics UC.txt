@@ -1,0 +1,67 @@
+Dispatch Logistics
+==================
+
+Models:
+------
+
+User > Admin > Dispatcher
+-------------------------
+User::Login
+User::LogOut
+User::Register
+User::ChangePassword(id)
+User::GetProfile(id)
+User::SendPasswordReset
+User::ChangePasswordReset
+
+
+Dispatcher::UpdateLocation(lat,lng,id)
+Dispatcher::GetWithinRadius(lat,lng,radius)
+
+Location
+--------
+Location::SearchLocationsByAddress(address)
+Location::GetLatLngFromAddress(locationAddress);
+Location::GetDistanceFromTwoLocations(lat1,lng1,lat2,lng2)
+
+Customer
+--------
+Customer::Login
+Customer::LogOut
+Customer::Register
+Customer::ChangePassword(id)
+Customer::GetProfile(id)
+Customer::SendPasswordReset
+Customer::ChangePasswordReset
+
+DispatchRequest
+---------------
+DispatchRequest::CreateRequest
+DispatchRequest::CancelRequest
+DispatchRequest::CheckRequest
+DispatchRequest::PickUpRequest
+DispatchRequest::ConfirmRequestAtPickup (When dispatcher arrives at the requester's location)
+DispatchRequest::ConfirmPaymentAtPickup (When payment is made by the requester at pickup)
+DispatchRequest::ConfirmPaymentAtDropOff (When payment is made through the dispatcher at dropoff)
+DispatchRequest::DropRequest
+DispatchRequest::ListPendingRequests
+DispatchRequest::ListCancelledRequests
+DispatchRequest::ListConfirmedRequests
+DispatchRequest::GetRequestById(id)
+
+DispatchRequestLog
+------------------
+DispatchRequestLog::LogRequest(dispatchRequestID,userID)
+
+
+
+Geocode API
+-----------
+https://maps.googleapis.com/maps/api/place/autocomplete/json?key=YOUR_KEY&input=ajah
+
+
+
+
+
+
+
