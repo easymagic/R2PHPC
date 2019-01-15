@@ -1,4 +1,4 @@
-<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=XXXXXXXXXXXXXXXXXXXXXXXX&libraries=geometry"></script>
 <!-- https://maps.googleapis.com/maps/api/js -->
 <!-- AIzaSyDgzNrN0i8WNwm3bOiWFeXt_bQFy4Vr5Vs -->
 <!-- &callback=initMap -->
@@ -282,6 +282,7 @@
     geo.infoWindow = null;
     geo.poly = null;
     geo.markers = [];
+    geo.geocoder = null;
 
     
 
@@ -300,6 +301,7 @@
            geo.infoWindow = new google.maps.InfoWindow();
            geo.map = new google.maps.Map(document.getElementById(config.mapId), mapOptions);
            geo.poly = new google.maps.Polyline({ map: geo.map, strokeColor: '#443b31' }); //#FF8200
+           geo.geocoder = new google.maps.Geocoder();
     });
 
     //Alias InitMap (ClearMap) 
@@ -432,6 +434,32 @@
 
     EventBus.Subscribe('MapRemovePolyLines',function(){
       geo.poly.setMap(null);
+    });
+
+    EventBus.Subscribe('MapGetLatLngFromPlaceId',function(config){
+
+       config.tag = config.tag || 'tag';
+
+        geo.geocoder.geocode({'placeId': config.placeId}, function(results, status) {
+
+            if (status !== 'OK') {
+              window.alert('Geocoder failed due to: ' + status);
+              return;
+            }
+
+            // console.log(results[0].geometry.location);
+            var result = {
+              lat:results[0].geometry.location.lat(),
+              lng:results[0].geometry.location.lng(),
+              tag:config.tag
+            } 
+
+            console.log(result);
+
+            EventBus.Notify('MapGottenLatLng',result);
+            
+        });           
+
     });
 
 
